@@ -1,0 +1,3 @@
+function Kalo () {
+  alert("Kalo")
+}
