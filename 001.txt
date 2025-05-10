@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Super Crawler Tools
 // @namespace    http://shopee.vn/
-// @version      2025-05-09.3
+// @version      2025-05-09.4
 // @description  try to take over the world!
 // @author       haivt@metric
 // @match        https://shopee.vn/*
@@ -256,7 +256,7 @@ async function scanCurrentPageData()
       'ShopeeProcessed'
 
     let data = {
-      product_base_id: `1__${shopId}__${productId}`
+      product_base_id: `1__${productId}_${shopId}`
       , product_name: c
         .querySelector(
           ".line-clamp-2")
