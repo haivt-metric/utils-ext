@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Metric Crawl Shopee Helper
 // @namespace    http://shopee.vn/
-// @version      2025-05-07
+// @version      2025-05-09
 // @description  try to take over the world!
 // @author       haivt@metric
 // @match        https://shopee.vn/*
@@ -356,10 +356,12 @@ async function showProductCrawlUi()
 {
   let btn = document.createElement(
     "button")
+  btn.style = 'border: 5px dotted green; background: rgba(255,0,100,0.5)'
+
   btn.style.position = 'fixed'
   btn.innerText = 'CRAWL PRODUCTS'
   btn.style.left = '30px'
-  btn.style.top = '100px'
+  btn.style.top = '160px'
   btn.style.fontSize = '46px'
   btn.id = 'btn-crawl-products'
   btn.addEventListener('click',
