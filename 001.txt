@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Super Crawler Tools
 // @namespace    http://shopee.vn/
-// @version      2025-05-09.2
+// @version      2025-05-09.3
 // @description  try to take over the world!
 // @author       haivt@metric
 // @match        https://shopee.vn/*
@@ -152,7 +152,13 @@ async function scanCurrentPageReviews()
 
     return {
       product_base_id,
-      shop_id: shopId
+      review_comment: c
+        .querySelector(
+          'div:nth-child(4):not(.shopee-product-rating__actions)'
+        )
+        ?.innerText ?? ''
+
+      , shop_id: shopId
       , product_id: productId
       , rating_stars: 5 - c
         .querySelectorAll(
@@ -168,11 +174,6 @@ async function scanCurrentPageReviews()
           'a.shopee-product-rating__author-name'
           )
         ?.href ?? '*'
-      , review_comment: c
-        .querySelector(
-          'div:nth-child(4):not(.shopee-product-rating__actions)'
-        )
-        ?.innerText ?? ''
       , rating_at: c.querySelector(
           '.shopee-product-rating__time'
           )
