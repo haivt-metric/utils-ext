@@ -1,0 +1,386 @@
+function Shopee () {
+
+async function waitSearchResult()
+{
+  if (document.querySelector(
+      '.shopee-search-item-result') ||
+    document
+    .querySelector(
+      '.shop-search-result-view'))
+  {
+    await showProductCrawlUi()
+  }
+  else
+  {
+    try
+    {
+      document.body.removeChild(
+        document.getElementById(
+          'btn-crawl-products'))
+    }
+    catch (e)
+    {}
+  }
+
+  if (document.querySelector(
+      '.product-ratings__list'))
+  {
+    await showReviewCrawlUi()
+  }
+  else
+  {
+    try
+    {
+      document.body.removeChild(
+        document.getElementById(
+          'btn-crawl-reviews'))
+    }
+    catch (e)
+    {}
+  }
+
+  setTimeout(waitSearchResult, 1000)
+
+}
+
+async function startCrawlingReviews()
+{
+  let n = prompt('How many pages?',
+    '2')
+  n = parseFloat(n)
+
+  let contents = []
+  contents = contents.concat(
+    await scanCurrentPageReviews())
+  await new Promise((r) => setTimeout(
+    r, 1000))
+  for (let i = 0; i < n - 1; i++)
+  {
+    let nextButton = document
+      .querySelector(
+        'nav .shopee-button-solid--primary'
+        )?.nextSibling
+    if (!nextButton) nextButton =
+      document.querySelector(
+        '.shopee-page-controller .shopee-button-solid--primary'
+        )
+      ?.nextSibling
+    if (nextButton) nextButton.click()
+    else continue;
+    await new Promise((r) =>
+      setTimeout(r, 3000))
+    contents = contents.concat(
+      await scanCurrentPageReviews()
+      )
+  }
+  transformAndExport(contents)
+
+}
+
+async function startCrawlingProducts()
+{
+  let n = prompt('How many pages?',
+    '2')
+  n = parseFloat(n)
+
+  let contents = []
+  contents = contents.concat(
+    await scanCurrentPageData())
+  await new Promise((r) => setTimeout(
+    r, 1000))
+  for (let i = 0; i < n - 1; i++)
+  {
+    let nextButton = document
+      .querySelector(
+        'nav .shopee-button-solid--primary'
+        )?.nextSibling
+    if (!nextButton) nextButton =
+      document.querySelector(
+        '.shopee-page-controller .shopee-button-solid--primary'
+        )
+      ?.nextSibling
+    if (nextButton) nextButton.click()
+    else continue;
+    await new Promise((r) =>
+      setTimeout(r, 3000))
+    contents = contents.concat(
+      await scanCurrentPageData())
+  }
+  transformAndExport(contents)
+}
+
+async function scanCurrentPageReviews()
+{
+  await scrollDown();
+  let ratingElements = document
+    .querySelectorAll(
+      '.product-ratings__list .shopee-product-rating__main'
+      )
+  ratingElements = Array.from(
+    ratingElements)
+  return ratingElements.map(c =>
+  {
+
+    let [_, shopId, productId] =
+    window.location.href.match(
+      /i\.([0-9]+)\.([0-9]+)/)
+    let likeCount = parseInt(c
+      .querySelector(
+        '.shopee-product-rating__like-count'
+        )?.innerText)
+    if (likeCount.toString() ==
+      'NaN') likeCount = 0;
+
+    return {
+      shopId
+      , productId
+      , ratingStars: 5 - c
+        .querySelectorAll(
+          'polygon[fill=none]')
+        ?.length
+      , authorName: c
+        .querySelector(
+          'a.shopee-product-rating__author-name'
+          )?.innerText ??
+        '*'
+      , authorUrl: c
+        .querySelector(
+          'a.shopee-product-rating__author-name'
+          )
+        ?.href ?? '*'
+      , reviewComment: c
+        .querySelector(
+          'div:nth-child(4):not(.shopee-product-rating__actions)'
+        )
+        ?.innerText ?? ''
+      , ratingAt: c.querySelector(
+          '.shopee-product-rating__time'
+          )
+        ?.innerText?.match(
+          /[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9] ?[0-9]?[0-9]?:[0-9]?[0-9]?/
+        )?.[0]
+      , ratingProductOption: c
+        .querySelector(
+          '.shopee-product-rating__time'
+          )?.innerText?.replace(
+          /[^|]+/, '')
+        ?.replace(/[^:]+:/, '') ??
+        'default'
+      , likeCount
+    , }
+  })
+}
+
+async function scanCurrentPageData()
+{
+  await scrollDown()
+  let contentElements = document
+    .querySelectorAll(
+      '.shopee-search-item-result a.contents'
+      );
+  if (contentElements.length == 0)
+  {
+    contentElements = document
+      .querySelectorAll(
+        '.shop-search-result-view a.contents'
+        );
+  }
+
+  contentElements = Array.from(
+    contentElements)
+  return contentElements.map(c =>
+  {
+    let [_, shopId, productId] = c
+      .href.match(
+        /i\.([0-9]+)\.([0-9]+)/)
+    let [soldRaw, soldValue,
+      soldUnit
+    ] = (c.querySelector(
+        "div.truncate.text-xs")
+      ?.innerText ?? '')?.match(
+      /([0-9\.,]+)(.*)?/) ?? [
+      '', '', ''
+    ]
+    soldValue = soldValue.replace(
+      /,/g, '.')
+
+    let shopFlagLabel = c
+      .querySelector(
+        'img[alt="flag-label"]')
+      ?.src
+      ?.match(
+        /(vn-.*)|(\/[^\/]+png)/)
+      ?.[0] ?? 'Normal'
+    if (shopFlagLabel ==
+      'vn-11134258-7r98o-lyb3kdam2qw17d'
+      )
+      shopFlagLabel = 'Mall'
+    if (shopFlagLabel ==
+      'vn-11134258-7r98o-lyb3m8mjjmape6'
+      )
+      shopFlagLabel = 'Loved'
+    if (shopFlagLabel ==
+      'vn-11134258-7r98o-lyb3l2w2maml9a'
+      )
+      shopFlagLabel = 'LovedPlus'
+    if (shopFlagLabel ==
+      'vn-11134258-7r98o-lyb3jv3ipe19e5'
+      )
+      shopFlagLabel =
+      'ShopeeProcessed'
+
+    let data = {
+      productId
+      , shopId
+      , shopFlagLabel
+      , price: c.querySelector(
+          "span.truncate.font-medium"
+          )
+        ?.innerText
+        ?.replace(/[^0-9]/g,
+        "")
+      , discountPercent: c
+        .querySelector(
+          "div.bg-shopee-pink.font-medium"
+          )?.innerText
+        ?.replace(
+          /[^0-9]/g, "") ?? 0
+      , soldRaw
+      , soldValue
+      , soldUnit
+      , rating: c.querySelector(
+          "div.text-shopee-black87.flex-none"
+          )
+        ?.innerText?.replace(
+          /[^0-9\.]/g, '')
+      , ratingNote: c
+        .querySelector(
+          "div.text-shopee-black87.flex-none"
+          )
+        ?.innerText?.replace(
+          /[0-9\.]/g, '') ?? ''
+      , specialLabels: (c
+        .querySelector(
+          ".box-border.mb-2")
+        ?.innerText ?? '') || (
+        c.querySelector(
+          ".box-border.text-sp10.items-center"
+          )
+        ?.innerText ?? '')
+      , locationName: c
+        .querySelector(
+          "div.truncate.text-shopee-black54 span.align-middle"
+        )
+        ?.innerText
+      , locationLabel: c
+        .querySelector(
+          "div.truncate.text-shopee-black54 [aria-label]"
+          )
+        ?.getAttribute(
+          'aria-label')
+      , productName: c
+        .querySelector(
+          ".line-clamp-2")
+        ?.innerText
+      , imgSrc: c.querySelector(
+        "img")?.src
+      , viewProductUrl: c?.href
+    , }
+    return data
+  })
+}
+
+async function scrollDown()
+{
+  let prevY = window.scrollY;
+  for (let i = 0; i < 500; i++)
+  {
+    window.scrollBy(0, 90)
+    await new Promise((r) =>
+      setTimeout(r, 100))
+    if (prevY == window.scrollY)
+  break;
+    prevY = window.scrollY;
+
+    let nextButton = document
+      .querySelector(
+        'nav .shopee-button-solid--primary'
+        )?.nextSibling
+    if (!nextButton) nextButton =
+      document.querySelector(
+        '.shopee-page-controller .shopee-button-solid--primary'
+        )
+      ?.nextSibling
+    if (nextButton
+      ?.getBoundingClientRect().y <
+      600) break;
+  }
+}
+
+function transformAndExport(contents)
+{
+  console.error(contents)
+  let result = ""
+  let keys = Object.keys(contents[0])
+  result += keys.map(c => `"${c}"`)
+    .join() + "\n"
+  for (let content of contents)
+  {
+    result += keys.map(c =>
+      `"${content?.[c]?.toString()?.replace(/[\n]/g,' \\n ')?.replace(/["]/g, "''")}"`
+    ).join() + "\n"
+  }
+  let name = prompt('File name',
+    "CrawledData-" + new Date()
+    .toISOString()
+    .replace(/[^0-9]/g, "").slice(0,
+      14) + ".csv")
+  GM_download(
+    "data:text/plain;charset=utf-8," +
+    encodeURIComponent(
+      result)
+    , name)
+}
+
+async function showProductCrawlUi()
+{
+  let btn = document.createElement(
+    "button")
+  btn.style = 'border: 9px dotted green; background: rgba(255,100,100,0.5)'
+  btn.style.position = 'fixed'
+  btn.innerText = 'CRAWL PRODUCTS'
+  btn.style.left = '30px'
+  btn.style.top = '160px'
+  btn.style.fontSize = '46px'
+  btn.id = 'btn-crawl-products'
+  btn.addEventListener('click',
+    startCrawlingProducts)
+  document.body.appendChild(btn)
+  //console.log('UI', btn)
+}
+
+async function showReviewCrawlUi()
+{
+  let btn = document.createElement(
+    "button")
+  btn.style = 'border: 9px dotted green; background: rgba(255,100,100,0.5)'
+  btn.style.position = 'fixed'
+  btn.innerText = 'CRAWL REVIEWS'
+  btn.style.left = '30px'
+  btn.style.top = '100px'
+  btn.style.fontSize = '46px'
+  btn.id = 'btn-crawl-reviews'
+  btn.addEventListener('click',
+    startCrawlingReviews)
+  document.body.appendChild(btn)
+  //console.log('UI', btn)
+}
+
+waitSearchResult()
+}
+
+function Kalo () {
+  print
+}
+
+if (window.location.href.includes("shopee.vn")) Shopee()
