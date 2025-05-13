@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Super Crawler Tools
 // @namespace    http://shopee.vn/
-// @version      2025-05-09.6
+// @version      2025-05-09.7
 // @description  try to take over the world!
 // @author       haivt@metric
 // @match        https://shopee.vn/*
@@ -578,9 +578,15 @@ function Kalo()
   {
     let result = []
 
-    let numPages = window.location
-      .href.includes(
-        '.com/product/detail') ? 1 :
+    let numPages = (window.location
+        .href.includes(
+          '.com/product/detail') ||
+        window.location
+        .href.includes(
+          '.com/livestream/detail') ||
+        window.location
+        .href.includes(
+          '.com/shop/detail')) ? 1 :
       parseFloat(prompt(
         'num pages?', 2))
 
@@ -667,7 +673,9 @@ function Kalo()
         }
 
       if (window.location.href
-        .includes('.com/shop'))
+        .includes('.com/shop') && !
+        window.location.href
+        .includes('.com/shop/detail'))
         rowData = {
           ...rowData
           , shop_base_id: `8__${rowData['_key']}`
@@ -764,7 +772,11 @@ function Kalo()
         }
 
       if (window.location.href
-        .includes('.com/livestream'))
+        .includes(
+        '.com/livestream') && !window
+        .location.href
+        .includes(
+          '.com/livestream/detail'))
         rowData = {
           ...rowData
           , live_base_id: `8__${rowData['_key']}`
@@ -786,6 +798,88 @@ function Kalo()
             .innerText
 
         }
+
+      ///////
+      if (window.location.href
+        .includes(
+          '.com/livestream/detail'))
+      {
+
+        rowData['product_name'] =
+          cells[
+            1].innerText
+        rowData['revenue'] = parseNum(
+          cells[
+            2].innerText)
+        rowData['sold'] = parseNum(
+          cells[
+            3].innerText)
+        rowData[
+          'average_unit_price'] =
+          parseNum(cells[
+            4].innerText)
+
+      }
+
+      //////////////////////////////
+      if (window.location.href
+        .includes(
+          '.com/shop/detail'))
+      {
+        let tableTitle = r
+          .parentElement.parentElement
+          .parentElement.parentElement
+          .parentElement.parentElement
+          .parentElement.parentElement
+          .parentElement.parentElement
+          .parentElement.firstChild
+          .firstChild.firstChild
+          .firstChild.innerText || r
+          .parentElement.parentElement
+          .parentElement.parentElement
+          .parentElement.parentElement
+          .parentElement.parentElement
+          .parentElement.parentElement
+          .parentElement.firstChild
+          .firstChild.firstChild
+          .innerText
+        ///
+        rowData['_tableTitle'] =
+          tableTitle;
+
+        if (tableTitle ==
+          'Sản phẩm' || tableTitle ==
+          'Product')
+        {
+          rowData['_tableTitle'] =
+            'product';
+          rowData['product_base_id'] =
+            "8__" + rowData['_key'];
+
+          rowData['product_name'] =
+            cells[1].innerText;
+          rowData[
+            'product_image_url'] =
+            cells[1].querySelector(
+              '.Component-Image')
+            .style['background-image']
+            .toString().match(
+              /\"(.*)\"/)[1];
+          rowData['created_date'] =
+            cells[2].innerText;
+          rowData['revenue'] =
+            parseNum(cells[3]
+              .innerText);
+          rowData['sold'] = parseNum(
+            cells[4].innerText);
+          rowData[
+              'average_unit_price'] =
+            parseNum(cells[5]
+              .innerText);
+        }
+        else continue;
+
+      }
 
       //////////////////////////////
       if (window.location.href
