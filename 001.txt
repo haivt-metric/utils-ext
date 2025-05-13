@@ -1,304 +1,18 @@
 // ==UserScript==
-// @name         Metric Crawl Shopee Helper
+// @name         Super Crawler Tools
 // @namespace    http://shopee.vn/
-// @version      2025-05-09
+// @version      2025-05-09.6
 // @description  try to take over the world!
 // @author       haivt@metric
 // @match        https://shopee.vn/*
+// @match        https://www.kalodata.com/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=shopee.vn
 // @grant        GM_download
-// @downloadUrl  https://gist.githubusercontent.com/haivt-metric/fb92a7f6ce6302306b4665d3c1bb7ecd/raw/942f3ccd203cec23168a64e6dc30d8849b31b5d5/ext.js
+// @downloadURL  https://raw.githubusercontent.com/haivt-metric/utils-ext/refs/heads/_v2/001.txt
+// @updateURL    https://raw.githubusercontent.com/haivt-metric/utils-ext/refs/heads/_v2/001.txt
+// @run-at document-start
+// @require      https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js
 // ==/UserScript==
-
-async function waitSearchResult()
-{
-  if (document.querySelector(
-      '.shopee-search-item-result') ||
-    document
-    .querySelector(
-      '.shop-search-result-view'))
-  {
-    await showProductCrawlUi()
-  }
-  else
-  {
-    try
-    {
-      document.body.removeChild(
-        document.getElementById(
-          'btn-crawl-products'))
-    }
-    catch (e)
-    {}
-  }
-
-  if (document.querySelector(
-      '.product-ratings__list'))
-  {
-    await showReviewCrawlUi()
-  }
-  else
-  {
-    try
-    {
-      document.body.removeChild(
-        document.getElementById(
-          'btn-crawl-reviews'))
-    }
-    catch (e)
-    {}
-  }
-
-  setTimeout(waitSearchResult, 1000)
-
-}
-
-async function startCrawlingReviews()
-{
-  let n = prompt('How many pages?',
-    '2')
-  n = parseFloat(n)
-
-  let contents = []
-  contents = contents.concat(
-    await scanCurrentPageReviews())
-  await new Promise((r) => setTimeout(
-    r, 1000))
-  for (let i = 0; i < n - 1; i++)
-  {
-    let nextButton = document
-      .querySelector(
-        'nav .shopee-button-solid--primary'
-        )?.nextSibling
-    if (!nextButton) nextButton =
-      document.querySelector(
-        '.shopee-page-controller .shopee-button-solid--primary'
-        )
-      ?.nextSibling
-    if (nextButton) nextButton.click()
-    else continue;
-    await new Promise((r) =>
-      setTimeout(r, 3000))
-    contents = contents.concat(
-      await scanCurrentPageReviews()
-      )
-  }
-  transformAndExport(contents)
-
-}
-
-async function startCrawlingProducts()
-{
-  let n = prompt('How many pages?',
-    '2')
-  n = parseFloat(n)
-
-  let contents = []
-  contents = contents.concat(
-    await scanCurrentPageData())
-  await new Promise((r) => setTimeout(
-    r, 1000))
-  for (let i = 0; i < n - 1; i++)
-  {
-    let nextButton = document
-      .querySelector(
-        'nav .shopee-button-solid--primary'
-        )?.nextSibling
-    if (!nextButton) nextButton =
-      document.querySelector(
-        '.shopee-page-controller .shopee-button-solid--primary'
-        )
-      ?.nextSibling
-    if (nextButton) nextButton.click()
-    else continue;
-    await new Promise((r) =>
-      setTimeout(r, 3000))
-    contents = contents.concat(
-      await scanCurrentPageData())
-  }
-  transformAndExport(contents)
-}
-
-async function scanCurrentPageReviews()
-{
-  await scrollDown();
-  let ratingElements = document
-    .querySelectorAll(
-      '.product-ratings__list .shopee-product-rating__main'
-      )
-  ratingElements = Array.from(
-    ratingElements)
-  return ratingElements.map(c =>
-  {
-
-    let [_, shopId, productId] =
-    window.location.href.match(
-      /i\.([0-9]+)\.([0-9]+)/)
-    let likeCount = parseInt(c
-      .querySelector(
-        '.shopee-product-rating__like-count'
-        )?.innerText)
-    if (likeCount.toString() ==
-      'NaN') likeCount = 0;
-
-    return {
-      shopId
-      , productId
-      , ratingStars: 5 - c
-        .querySelectorAll(
-          'polygon[fill=none]')
-        ?.length
-      , authorName: c
-        .querySelector(
-          'a.shopee-product-rating__author-name'
-          )?.innerText ??
-        '*'
-      , authorUrl: c
-        .querySelector(
-          'a.shopee-product-rating__author-name'
-          )
-        ?.href ?? '*'
-      , reviewComment: c
-        .querySelector(
-          'div:nth-child(4):not(.shopee-product-rating__actions)'
-        )
-        ?.innerText ?? ''
-      , ratingAt: c.querySelector(
-          '.shopee-product-rating__time'
-          )
-        ?.innerText?.match(
-          /[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9] ?[0-9]?[0-9]?:[0-9]?[0-9]?/
-        )?.[0]
-      , ratingProductOption: c
-        .querySelector(
-          '.shopee-product-rating__time'
-          )?.innerText?.replace(
-          /[^|]+/, '')
-        ?.replace(/[^:]+:/, '') ??
-        'default'
-      , likeCount
-    , }
-  })
-}
-
-async function scanCurrentPageData()
-{
-  await scrollDown()
-  let contentElements = document
-    .querySelectorAll(
-      '.shopee-search-item-result a.contents'
-      );
-  if (contentElements.length == 0)
-  {
-    contentElements = document
-      .querySelectorAll(
-        '.shop-search-result-view a.contents'
-        );
-  }
-
-  contentElements = Array.from(
-    contentElements)
-  return contentElements.map(c =>
-  {
-    let [_, shopId, productId] = c
-      .href.match(
-        /i\.([0-9]+)\.([0-9]+)/)
-    let [soldRaw, soldValue,
-      soldUnit
-    ] = (c.querySelector(
-        "div.truncate.text-xs")
-      ?.innerText ?? '')?.match(
-      /([0-9\.,]+)(.*)?/) ?? [
-      '', '', ''
-    ]
-    soldValue = soldValue.replace(
-      /,/g, '.')
-
-    let shopFlagLabel = c
-      .querySelector(
-        'img[alt="flag-label"]')
-      ?.src
-      ?.match(
-        /(vn-.*)|(\/[^\/]+png)/)
-      ?.[0] ?? 'Normal'
-    if (shopFlagLabel ==
-      'vn-11134258-7r98o-lyb3kdam2qw17d'
-      )
-      shopFlagLabel = 'Mall'
-    if (shopFlagLabel ==
-      'vn-11134258-7r98o-lyb3m8mjjmape6'
-      )
-      shopFlagLabel = 'Loved'
-    if (shopFlagLabel ==
-      'vn-11134258-7r98o-lyb3l2w2maml9a'
-      )
-      shopFlagLabel = 'LovedPlus'
-    if (shopFlagLabel ==
-      'vn-11134258-7r98o-lyb3jv3ipe19e5'
-      )
-      shopFlagLabel =
-      'ShopeeProcessed'
-
-    let data = {
-      productId
-      , shopId
-      , shopFlagLabel
-      , price: c.querySelector(
-          "span.truncate.font-medium"
-          )
-        ?.innerText
-        ?.replace(/[^0-9]/g,
-        "")
-      , discountPercent: c
-        .querySelector(
-          "div.bg-shopee-pink.font-medium"
-          )?.innerText
-        ?.replace(
-          /[^0-9]/g, "") ?? 0
-      , soldRaw
-      , soldValue
-      , soldUnit
-      , rating: c.querySelector(
-          "div.text-shopee-black87.flex-none"
-          )
-        ?.innerText?.replace(
-          /[^0-9\.]/g, '')
-      , ratingNote: c
-        .querySelector(
-          "div.text-shopee-black87.flex-none"
-          )
-        ?.innerText?.replace(
-          /[0-9\.]/g, '') ?? ''
-      , specialLabels: (c
-        .querySelector(
-          ".box-border.mb-2")
-        ?.innerText ?? '') || (
-        c.querySelector(
-          ".box-border.text-sp10.items-center"
-          )
-        ?.innerText ?? '')
-      , locationName: c
-        .querySelector(
-          "div.truncate.text-shopee-black54 span.align-middle"
-        )
-        ?.innerText
-      , locationLabel: c
-        .querySelector(
-          "div.truncate.text-shopee-black54 [aria-label]"
-          )
-        ?.getAttribute(
-          'aria-label')
-      , productName: c
-        .querySelector(
-          ".line-clamp-2")
-        ?.innerText
-      , imgSrc: c.querySelector(
-        "img")?.src
-      , viewProductUrl: c?.href
-    , }
-    return data
-  })
-}
 
 async function scrollDown()
 {
@@ -309,26 +23,36 @@ async function scrollDown()
     await new Promise((r) =>
       setTimeout(r, 100))
     if (prevY == window.scrollY)
-  break;
+      break;
     prevY = window.scrollY;
 
     let nextButton = document
       .querySelector(
         'nav .shopee-button-solid--primary'
-        )?.nextSibling
-    if (!nextButton) nextButton =
+      )?.nextSibling
+    if (!nextButton)
+      nextButton =
       document.querySelector(
         '.shopee-page-controller .shopee-button-solid--primary'
-        )
+      )
       ?.nextSibling
     if (nextButton
-      ?.getBoundingClientRect().y <
+      ?.getBoundingClientRect()
+      .y <
       600) break;
   }
 }
 
 function transformAndExport(contents)
 {
+  let name = prompt('File name'
+    , "CrawledData-" +
+    new Date()
+    .toISOString()
+    .replace(/[^0-9]/g, "")
+    .slice(0
+      , 14) + ".xlsx")
+  /*
   console.error(contents)
   let result = ""
   let keys = Object.keys(contents[0])
@@ -340,50 +64,1000 @@ function transformAndExport(contents)
       `"${content?.[c]?.toString()?.replace(/[\n]/g,' \\n ')?.replace(/["]/g, "''")}"`
     ).join() + "\n"
   }
-  let name = prompt('File name',
-    "CrawledData-" + new Date()
-    .toISOString()
-    .replace(/[^0-9]/g, "").slice(0,
-      14) + ".csv")
   GM_download(
     "data:text/plain;charset=utf-8," +
     encodeURIComponent(
       result)
     , name)
+    */
+  const worksheet = XLSX.utils
+    .json_to_sheet(contents);
+
+  const colName = ['A1', 'B1', 'C1']
+  for (const itm of colName)
+  {
+    worksheet[itm].s = {
+      fill:
+      {
+        fgColor:
+        {
+          rgb: "FFFFAA00"
+        }
+        , patternType: 'solid'
+      }
+      , font:
+      {
+        color:
+        {
+          rgb: "FFFFFF"
+        }
+      }
+    }
+    console.log(worksheet[itm].v)
+  }
+
+  if (!worksheet["!cols"])
+    worksheet["!cols"] = [];
+  if (!worksheet["!cols"][0])
+    worksheet["!cols"][0] = {
+      wch: 8
+    };
+  if (!worksheet["!cols"][1])
+    worksheet["!cols"][1] = {
+      wch: 8
+    };
+
+  worksheet['!cols'][0].wpx = 150;
+  worksheet['!cols'][1].wpx = 250;
+
+  const workbook = XLSX.utils
+    .book_new();
+  XLSX.utils.book_append_sheet(
+    workbook, worksheet
+    , "CRAWLED_DATA");
+  XLSX.writeFile(workbook, name
+    , {
+      compression: true
+    });
 }
 
-async function showProductCrawlUi()
+function Shopee()
 {
-  let btn = document.createElement(
-    "button")
-  btn.style = 'border: 5px dotted green; background: rgba(255,0,100,0.5)'
 
-  btn.style.position = 'fixed'
-  btn.innerText = 'CRAWL PRODUCTS'
-  btn.style.left = '30px'
-  btn.style.top = '160px'
-  btn.style.fontSize = '46px'
-  btn.id = 'btn-crawl-products'
-  btn.addEventListener('click',
-    startCrawlingProducts)
-  document.body.appendChild(btn)
-  //console.log('UI', btn)
+  async function waitSearchResult()
+  {
+    try
+    {
+      document.body.removeChild(
+        document
+        .getElementById(
+          'btn-crawl-products'
+        ))
+    }
+    catch (e)
+    {}
+
+    try
+    {
+      document.body.removeChild(
+        document
+        .getElementById(
+          'btn-crawl-reviews'
+        ))
+    }
+    catch (e)
+    {}
+
+    if (document.querySelector(
+        '.shopee-search-item-result'
+      ) ||
+      document
+      .querySelector(
+        '.shop-search-result-view'
+      ))
+    {
+      await showProductCrawlUi()
+    }
+    else
+    {
+      try
+      {
+        document.body
+          .removeChild(
+            document
+            .getElementById(
+              'btn-crawl-products'
+            ))
+      }
+      catch (e)
+      {}
+    }
+
+    if (document.querySelector(
+        '.product-ratings__list'
+      ))
+    {
+      await showReviewCrawlUi()
+    }
+    else
+    {
+      try
+      {
+        document.body
+          .removeChild(
+            document
+            .getElementById(
+              'btn-crawl-reviews'
+            ))
+      }
+      catch (e)
+      {}
+    }
+
+    setTimeout(waitSearchResult
+      , 1000)
+
+  }
+
+  async function startCrawlingReviews()
+  {
+    let n = prompt(
+      'How many pages?'
+      , '2')
+    n = parseFloat(n)
+
+    let contents = []
+    contents = contents.concat(
+      await scanCurrentPageReviews()
+    )
+    await new Promise((r) =>
+      setTimeout(
+        r, 1000))
+    for (let i = 0; i < n - 1; i++)
+    {
+      let nextButton = document
+        .querySelector(
+          'nav .shopee-button-solid--primary'
+        )?.nextSibling
+      if (!nextButton)
+        nextButton =
+        document.querySelector(
+          '.shopee-page-controller .shopee-button-solid--primary'
+        )
+        ?.nextSibling
+      if (nextButton) nextButton
+        .click()
+      else continue;
+      await new Promise((r) =>
+        setTimeout(r, 3000))
+      contents = contents.concat(
+        await scanCurrentPageReviews()
+      )
+    }
+    transformAndExport(contents)
+
+  }
+
+  async function startCrawlingProducts()
+  {
+    let n = prompt(
+      'How many pages?'
+      , '2')
+    n = parseFloat(n)
+
+    let contents = []
+    contents = contents.concat(
+      await scanCurrentPageData()
+    )
+    await new Promise((r) =>
+      setTimeout(
+        r, 1000))
+    for (let i = 0; i < n - 1; i++)
+    {
+      let nextButton = document
+        .querySelector(
+          'nav .shopee-button-solid--primary'
+        )?.nextSibling
+      if (!nextButton)
+        nextButton =
+        document.querySelector(
+          '.shopee-page-controller .shopee-button-solid--primary'
+        )
+        ?.nextSibling
+      if (nextButton) nextButton
+        .click()
+      else continue;
+      await new Promise((r) =>
+        setTimeout(r, 3000))
+      contents = contents.concat(
+        await scanCurrentPageData()
+      )
+    }
+    transformAndExport(contents)
+  }
+
+  async function scanCurrentPageReviews()
+  {
+    await scrollDown();
+    let ratingElements = document
+      .querySelectorAll(
+        '.product-ratings__list .shopee-product-rating__main'
+      )
+    ratingElements = Array.from(
+      ratingElements)
+    return ratingElements.map(c =>
+    {
+
+      let [_, shopId
+        , productId
+      ] =
+      window.location.href
+        .match(
+          /i\.([0-9]+)\.([0-9]+)/
+        )
+
+      let product_base_id =
+        `1__${productId}__${shopId}`
+
+      let likeCount =
+        parseInt(c
+          .querySelector(
+            '.shopee-product-rating__like-count'
+          )?.innerText)
+      if (likeCount
+        .toString() ==
+        'NaN') likeCount =
+        0;
+
+      return {
+        product_base_id
+        , review_comment: c
+          .querySelector(
+            'div:nth-child(4):not(.shopee-product-rating__actions)'
+          )
+          ?.innerText ??
+          ''
+
+        , shop_id: shopId
+        , product_id: productId
+        , rating_stars: 5 -
+          c
+          .querySelectorAll(
+            'polygon[fill=none]'
+          )
+          ?.length
+        , author_name: c
+          .querySelector(
+            'a.shopee-product-rating__author-name'
+          )?.innerText ??
+          '*'
+        , author_url: c
+          .querySelector(
+            'a.shopee-product-rating__author-name'
+          )
+          ?.href ?? '*'
+        , rating_at: c
+          .querySelector(
+            '.shopee-product-rating__time'
+          )
+          ?.innerText
+          ?.match(
+            /[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9] ?[0-9]?[0-9]?:[0-9]?[0-9]?/
+          )?.[0]
+        , rating_product_option: c
+          .querySelector(
+            '.shopee-product-rating__time'
+          )?.innerText
+          ?.replace(
+            /[^|]+/, '')
+          ?.replace(
+            /[^:]+:/, ''
+          ) ??
+          'default'
+        , like_count: likeCount
+      , }
+    })
+  }
+
+  async function scanCurrentPageData()
+  {
+    await scrollDown()
+    let contentElements = document
+      .querySelectorAll(
+        '.shopee-search-item-result a.contents'
+      );
+    if (contentElements.length ==
+      0)
+    {
+      contentElements = document
+        .querySelectorAll(
+          '.shop-search-result-view a.contents'
+        );
+    }
+
+    contentElements = Array.from(
+      contentElements)
+    return contentElements.map(c =>
+    {
+      let [_, shopId
+        , productId
+      ] = c
+        .href.match(
+          /i\.([0-9]+)\.([0-9]+)/
+        )
+      let [soldRaw
+        , soldValue
+        , soldUnit
+      ] = (c.querySelector(
+          "div.truncate.text-xs"
+        )
+        ?.innerText ?? '')
+      ?.match(
+        /([0-9\.,]+)(.*)?/
+      ) ?? [
+        '', '', ''
+      ]
+      soldValue = soldValue
+        .replace(
+          /,/g, '.')
+
+      let sold = parseFloat(
+        soldValue);
+      if (soldUnit?.match(
+          '[kK]')) sold =
+        sold * 1000;
+      if (soldUnit?.match(
+          '[mM]')) sold =
+        sold * 1000000;
+
+      let shopFlagLabel = c
+        .querySelector(
+          'img[alt="flag-label"]'
+        )
+        ?.src
+        ?.match(
+          /(vn-.*)|(\/[^\/]+png)/
+        )
+        ?.[0] ?? 'Normal'
+      if (shopFlagLabel ==
+        'vn-11134258-7r98o-lyb3kdam2qw17d'
+      )
+        shopFlagLabel =
+        'Mall'
+      if (shopFlagLabel ==
+        'vn-11134258-7r98o-lyb3m8mjjmape6'
+      )
+        shopFlagLabel =
+        'Loved'
+      if (shopFlagLabel ==
+        'vn-11134258-7r98o-lyb3l2w2maml9a'
+      )
+        shopFlagLabel =
+        'LovedPlus'
+      if (shopFlagLabel ==
+        'vn-11134258-7r98o-lyb3jv3ipe19e5'
+      )
+        shopFlagLabel =
+        'ShopeeProcessed'
+
+      let data = {
+        product_base_id: `1__${productId}_${shopId}`
+        , product_name: c
+          .querySelector(
+            ".line-clamp-2"
+          )
+          ?.innerText
+        , price: parseFloat(
+          c
+          .querySelector(
+            "span.truncate.font-medium"
+          )
+          ?.innerText
+          ?.replace(
+            /[^0-9]/g
+            , ""))
+        , discount_percent: parseFloat(
+            c
+            .querySelector(
+              "div.bg-shopee-pink.font-medium"
+            )
+            ?.innerText
+            ?.replace(
+              /[^0-9]/g
+              , "") ??
+            0)
+
+        , sold
+        , img_src: c
+          .querySelector(
+            "img")
+          ?.src
+        , view_product_url: c
+          ?.href
+
+        , shop_id: shopId
+        , shop_flag_label: shopFlagLabel
+
+        , rating: parseFloat(
+          c
+          .querySelector(
+            "div.text-shopee-black87.flex-none"
+          )
+          ?.innerText
+          ?.replace(
+            /[^0-9\.]/g
+            , ''))
+        , ratingNote: c
+          .querySelector(
+            "div.text-shopee-black87.flex-none"
+          )
+          ?.innerText
+          ?.replace(
+            /[0-9\.]/g
+            , '') ?? ''
+
+        , sold_raw: soldRaw
+        , sold_value: soldValue
+        , sold_unit: soldUnit
+        , special_labels: (
+          c
+          .querySelector(
+            ".box-border.mb-2"
+          )
+          ?.innerText ??
+          '') || (
+          c
+          .querySelector(
+            ".box-border.text-sp10.items-center"
+          )
+          ?.innerText ??
+          '')
+        , product_id: productId
+        , location_name: c
+          .querySelector(
+            "div.truncate.text-shopee-black54 span.align-middle"
+          )
+          ?.innerText
+        , location_label: c
+          .querySelector(
+            "div.truncate.text-shopee-black54 [aria-label]"
+          )
+          ?.getAttribute(
+            'aria-label'
+          )
+      , }
+      return data
+    })
+  }
+
+  async function showProductCrawlUi()
+  {
+    let btn = document
+      .createElement(
+        "button")
+    btn.style =
+      'border: 9px dotted green; background: rgba(255,100,100,0.5)'
+    btn.style.position = 'fixed'
+    btn.innerText =
+      'CRAWL PRODUCTS'
+    btn.style.left = '30px'
+    btn.style.top = '160px'
+    btn.style.fontSize = '46px'
+    btn.id = 'btn-crawl-products'
+    btn.addEventListener('click'
+      , startCrawlingProducts)
+    document.body.appendChild(btn)
+    //console.log('UI', btn)
+  }
+
+  async function showReviewCrawlUi()
+  {
+    let btn = document
+      .createElement(
+        "button")
+    btn.style =
+      'border: 9px dotted green; background: rgba(255,100,100,0.5)'
+    btn.style.position = 'fixed'
+    btn.innerText = 'CRAWL REVIEWS'
+    btn.style.left = '30px'
+    btn.style.top = '100px'
+    btn.style.fontSize = '46px'
+    btn.id = 'btn-crawl-reviews'
+    btn.addEventListener('click'
+      , startCrawlingReviews)
+    document.body.appendChild(btn)
+    //console.log('UI', btn)
+  }
+
+  waitSearchResult()
 }
 
-async function showReviewCrawlUi()
+function Kalo()
 {
-  let btn = document.createElement(
-    "button")
-  btn.style.position = 'fixed'
-  btn.innerText = 'CRAWL REVIEWS'
-  btn.style.left = '30px'
-  btn.style.top = '100px'
-  btn.style.fontSize = '46px'
-  btn.id = 'btn-crawl-reviews'
-  btn.addEventListener('click',
-    startCrawlingReviews)
-  document.body.appendChild(btn)
-  //console.log('UI', btn)
+  async function startCrawl()
+  {
+    let result = []
+
+    let numPages = (window.location
+        .href.includes(
+          '.com/product/detail') ||
+        window.location
+        .href.includes(
+          '.com/livestream/detail') ||
+        window.location
+        .href.includes(
+          '.com/shop/detail')) ? 1 :
+      parseFloat(prompt(
+        'num pages?', 2))
+
+    for (let i = 0; i < numPages; i++)
+    {
+      if (i > 0) document
+        .querySelector(
+          '.ant-pagination-item-active'
+        ).nextSibling.click();
+      result = [...result, ...
+        await startCrawlTable()
+      ]
+    }
+
+    console.log(result)
+
+    transformAndExport(result)
+  }
+
+  async function startCrawlTable()
+  {
+    await scrollDown()
+    await new Promise((r) =>
+      setTimeout(r, 3000))
+    let result = [];
+    let trows = document
+      .querySelectorAll(
+        ".ant-table-tbody .ant-table-row-level-0"
+      );
+    for (let r of trows)
+    {
+      let cells = Array.from(r
+        .querySelectorAll('td'))
+
+      let _best_selling = Array.from(r
+          .querySelectorAll('.cover'))
+        .map(x => x.style[
+          'background-image'].match(
+          /[0-9][0-9][0-9][0-9][0-9][0-9]+/
+        )[0].toString())
+
+      let rowData = {
+        _key: r.getAttribute(
+          'data-row-key')
+        , title: cells[1].innerText,
+
+        _no: cells[0].innerText,
+
+      };
+
+      for (let k of Object.keys(
+          _best_selling))
+      {
+        rowData[
+            (window.location.href
+              .includes(
+                "com/product") ?
+              "highest_revenue_video_base_id" :
+              "best_selling_product_base_id_"
+            ) +
+            k] = "8__" +
+          _best_selling[k]
+      }
+
+      if (window.location.href
+        .includes('.com/category'))
+        rowData = {
+          ...rowData
+          , category_base_id: `8__${rowData['_key']}`
+          , revenue: parseNum(cells[3]
+            .innerText)
+          , revenue_growth_rate: parseNum(
+            cells[4].innerText)
+          , num_shops: parseNum(cells[
+            6].innerText)
+          , average_shop_revenue: parseNum(
+            cells[7]?.innerText)
+          , category_level: parseNum(
+            cells[8]?.innerText)
+          , top_3_shops_ratio: parseNum(
+            cells[9]?.innerText)
+          , top_10_shops_ratio: parseNum(
+            cells[10]?.innerText)
+        }
+
+      if (window.location.href
+        .includes('.com/shop') && !
+        window.location.href
+        .includes('.com/shop/detail'))
+        rowData = {
+          ...rowData
+          , shop_base_id: `8__${rowData['_key']}`
+          , shop_name: rowData[
+            'title'].split('\n')[0]
+          , shop_type: rowData[
+              'title'].split('\n')[1]
+
+          , revenue: parseNum(cells[3]
+            .innerText)
+          , avg_unit_price: parseNum(
+            cells[5].innerText)
+        }
+
+      if (window.location.href
+        .includes('.com/creator'))
+        rowData = {
+          ...rowData
+          , kol_base_id: `8__${rowData['_key']}`
+          , kol_name: rowData[
+            'title'].split('\n')[1]
+          , kol_uid: rowData[
+              'title'].split('\n')[0]
+
+          , revenue: parseNum(cells[4]
+            .innerText)
+          , followers: parseNum(cells[
+              2]
+            .innerText)
+          , content_views: parseNum(
+            cells[6].innerText)
+          , debut_time: cells[8]
+            .innerText
+        }
+
+      if (window.location.href
+        .includes('.com/product') && !
+        window.location.href
+        .includes(
+          '.com/product/detail'))
+        rowData = {
+          ...rowData
+          , product_base_id: `8__${rowData['_key']}`
+          , product_name: rowData[
+              'title'].split('\n')[0]
+
+          , price: parseNum(rowData[
+              'title'].split('\n')[
+              1])
+
+          , revenue: parseNum(cells[2]
+            .innerText)
+          , sold: parseNum(cells[4]
+            .innerText)
+          , avg_unit_price: parseNum(
+            cells[5].innerText)
+          , comission_rate: parseNum(
+            cells[6].innerText)
+          , creator_number: parseNum(
+            cells[8].innerText)
+          , creator_conversion_ratio: parseNum(
+            cells[10].innerText)
+          , launch_date: cells[9]
+            .innerText
+        }
+
+      if (window.location.href
+        .includes('.com/video'))
+        rowData = {
+          ...rowData
+          , video_base_id: `8__${rowData['_key']}`
+          , video_name: rowData[
+              'title'].split('\n')[0]
+
+          , video_length: rowData[
+              'title'].split('\n')[1]
+
+          , revenue: parseNum(cells[4]
+            .innerText)
+          , sold: parseNum(cells[3]
+            .innerText)
+          , views: parseNum(
+            cells[6].innerText)
+          , gpm: parseNum(
+            cells[8].innerText)
+          , ad_cpa: parseNum(
+            cells[9].innerText)
+          , ad_view_ratio: parseNum(
+            cells[10].innerText)
+          , ad_spent: parseNum(
+            cells[11].innerText)
+          , ad_roas: parseNum(
+            cells[12].innerText)
+        }
+
+      if (window.location.href
+        .includes(
+        '.com/livestream') && !window
+        .location.href
+        .includes(
+          '.com/livestream/detail'))
+        rowData = {
+          ...rowData
+          , live_base_id: `8__${rowData['_key']}`
+          , live_name: rowData[
+              'title'].split('\n')[0]
+
+          , live_kol_uid: rowData[
+              'title'].split('\n')[1]
+
+          , revenue: parseNum(cells[4]
+              .innerText)
+
+          , views: parseNum(
+            cells[5].innerText)
+          , gpm: parseNum(
+              cells[6].innerText)
+
+          , time_info: cells[3]
+            .innerText
+
+        }
+
+      ///////
+      if (window.location.href
+        .includes(
+          '.com/livestream/detail'))
+      {
+
+        rowData['product_name'] =
+          cells[
+            1].innerText
+        rowData['revenue'] = parseNum(
+          cells[
+            2].innerText)
+        rowData['sold'] = parseNum(
+          cells[
+            3].innerText)
+        rowData[
+          'average_unit_price'] =
+          parseNum(cells[
+            4].innerText)
+
+      }
+
+      //////////////////////////////
+      if (window.location.href
+        .includes(
+          '.com/shop/detail'))
+      {
+        let tableTitle = r
+          .parentElement.parentElement
+          .parentElement.parentElement
+          .parentElement.parentElement
+          .parentElement.parentElement
+          .parentElement.parentElement
+          .parentElement.firstChild
+          .firstChild.firstChild
+          .firstChild.innerText || r
+          .parentElement.parentElement
+          .parentElement.parentElement
+          .parentElement.parentElement
+          .parentElement.parentElement
+          .parentElement.parentElement
+          .parentElement.firstChild
+          .firstChild.firstChild
+          .innerText
+        ///
+        rowData['_tableTitle'] =
+          tableTitle;
+
+        if (tableTitle ==
+          'Sản phẩm' || tableTitle ==
+          'Product')
+        {
+          rowData['_tableTitle'] =
+            'product';
+          rowData['product_base_id'] =
+            "8__" + rowData['_key'];
+
+          rowData['product_name'] =
+            cells[1].innerText;
+          rowData[
+            'product_image_url'] =
+            cells[1].querySelector(
+              '.Component-Image')
+            .style['background-image']
+            .toString().match(
+              /\"(.*)\"/)[1];
+          rowData['created_date'] =
+            cells[2].innerText;
+          rowData['revenue'] =
+            parseNum(cells[3]
+              .innerText);
+          rowData['sold'] = parseNum(
+            cells[4].innerText);
+          rowData[
+              'average_unit_price'] =
+            parseNum(cells[5]
+              .innerText);
+        }
+        else continue;
+
+      }
+
+      //////////////////////////////
+      if (window.location.href
+        .includes(
+          '.com/product/detail'))
+      {
+        let tableTitle = r
+          .parentElement.parentElement
+          .parentElement.parentElement
+          .parentElement.parentElement
+          .parentElement.parentElement
+          .parentElement.parentElement
+          .parentElement.firstChild
+          .firstChild.firstChild
+          .firstChild.innerText || r
+          .parentElement.parentElement
+          .parentElement.parentElement
+          .parentElement.parentElement
+          .parentElement.parentElement
+          .parentElement.parentElement
+          .parentElement.firstChild
+          .firstChild.firstChild
+          .innerText
+        ///
+        rowData['_tableTitle'] =
+          tableTitle;
+
+        if (tableTitle == 'Creator' ||
+          tableTitle == 'Nhà sáng tạo'
+        )
+        {
+          rowData['_tableTitle'] =
+            'creator';
+          rowData['kol_uid'] = cells[
+            1].innerText.split(
+            '\n')[0]
+          rowData['followers'] =
+            parseNum(cells[1]
+              .innerText.split('\n')[
+                1])
+          rowData['revenue'] =
+            parseNum(cells[2]
+              .innerText)
+          rowData['sold'] = parseNum(
+            cells[3].innerText)
+          rowData[
+              'revenue_from_video'] =
+            parseNum(cells[4]
+              .innerText)
+          rowData[
+              'revenue_from_live'] =
+            parseNum(cells[5]
+              .innerText)
+        }
+
+        if (tableTitle == 'Live')
+        {
+          rowData['_tableTitle'] =
+            'live';
+          rowData['live_title'] =
+            cells[1].innerText
+          rowData['live_date_range'] =
+            cells[2].innerText.split(
+              '\n')[0]
+          rowData['live_duration'] =
+            cells[2].innerText.split(
+              '\n')[1].split(':')[1]
+          rowData['revenue'] =
+            parseNum(cells[3]
+              .innerText)
+          rowData['sold'] = parseNum(
+            cells[4].innerText)
+          rowData[
+              'average_unit_price'] =
+            parseNum(cells[5]
+              .innerText)
+        }
+
+        if (tableTitle.startsWith(
+            'Video'))
+        {
+          rowData['_tableTitle'] =
+            'video';
+          rowData['revenue'] =
+            parseNum(cells[2]
+              .innerText)
+          rowData['video_title'] =
+            cells[1].innerText.split(
+              '\n')[0]
+          rowData['video_duration'] =
+            cells[1].innerText.split(
+              '\n')[1]
+          rowData['views'] = parseNum(
+            cells[3].innerText)
+          rowData['sold'] = parseNum(
+            cells[4].innerText)
+
+        }
+
+        ///
+      }
+
+      result.push(rowData)
+
+    }
+    return result
+  }
+
+  function waitForTable()
+  {
+    let table = document.querySelector(
+      ".ant-table-tbody .ant-table-row-level-0"
+    )
+    if (table)
+    {
+
+      if (!document.getElementById(
+          'crawler-button'))
+      {
+        let btn = document
+          .createElement('button')
+        btn.innerText = 'CRAWL TABLE'
+        btn.id = 'crawler-button'
+        btn.style =
+          'position: fixed; left: 10px; top: 30px; border: 2px solid red; padding: 10px; font-size: 30px; background: rgba(255,100,190, 0.5); z-index: 100'
+        document.body.appendChild(btn)
+        btn.addEventListener('click'
+          , startCrawl)
+      }
+
+      try
+      {
+        document.getElementById(
+            'crawler-button').style
+          .display = 'block'
+      }
+      catch (e)
+      {}
+    }
+    else
+    {
+      try
+      {
+        document.getElementById(
+            'crawler-button').style
+          .display = 'none'
+      }
+      catch (e)
+      {}
+    }
+    setTimeout(waitForTable, 1000)
+
+  }
+
+  function parseNum(num)
+  {
+    if (!num) return '';
+    let [_, v, u] = num.replace(/,/
+      , '.').match(
+      /([0-9\.\-]+)([a-zỉ]+)?/)
+
+    v = parseFloat(v)
+
+    if (u == 'tr' || u == 'm')
+      return v * 1000000;
+    if (u == 'tỉ' || u == 'b')
+      return v * 1000000000;
+    if (u == 'k') return v * 1000;
+
+    return v;
+
+  }
+
+  setTimeout(waitForTable, 1000)
 }
 
-waitSearchResult()
+if (window.location.href.includes(
+    "shopee.vn")) Shopee()
+
+if (window.location.href.includes(
+    "kalodata.com")) Kalo()
