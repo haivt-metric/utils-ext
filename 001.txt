@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Super Crawler Tools
 // @namespace    http://shopee.vn/
-// @version      2025-05-09.5
+// @version      2025-05-09.6
 // @description  try to take over the world!
 // @author       haivt@metric
 // @match        https://shopee.vn/*
@@ -13,6 +13,113 @@
 // @run-at document-start
 // @require      https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js
 // ==/UserScript==
+
+async function scrollDown()
+{
+  let prevY = window.scrollY;
+  for (let i = 0; i < 500; i++)
+  {
+    window.scrollBy(0, 90)
+    await new Promise((r) =>
+      setTimeout(r, 100))
+    if (prevY == window.scrollY)
+      break;
+    prevY = window.scrollY;
+
+    let nextButton = document
+      .querySelector(
+        'nav .shopee-button-solid--primary'
+      )?.nextSibling
+    if (!nextButton)
+      nextButton =
+      document.querySelector(
+        '.shopee-page-controller .shopee-button-solid--primary'
+      )
+      ?.nextSibling
+    if (nextButton
+      ?.getBoundingClientRect()
+      .y <
+      600) break;
+  }
+}
+
+function transformAndExport(contents)
+{
+  let name = prompt('File name'
+    , "CrawledData-" +
+    new Date()
+    .toISOString()
+    .replace(/[^0-9]/g, "")
+    .slice(0
+      , 14) + ".xlsx")
+  /*
+  console.error(contents)
+  let result = ""
+  let keys = Object.keys(contents[0])
+  result += keys.map(c => `"${c}"`)
+    .join() + "\n"
+  for (let content of contents)
+  {
+    result += keys.map(c =>
+      `"${content?.[c]?.toString()?.replace(/[\n]/g,' \\n ')?.replace(/["]/g, "''")}"`
+    ).join() + "\n"
+  }
+  GM_download(
+    "data:text/plain;charset=utf-8," +
+    encodeURIComponent(
+      result)
+    , name)
+    */
+  const worksheet = XLSX.utils
+    .json_to_sheet(contents);
+
+  const colName = ['A1', 'B1', 'C1']
+  for (const itm of colName)
+  {
+    worksheet[itm].s = {
+      fill:
+      {
+        fgColor:
+        {
+          rgb: "FFFFAA00"
+        }
+        , patternType: 'solid'
+      }
+      , font:
+      {
+        color:
+        {
+          rgb: "FFFFFF"
+        }
+      }
+    }
+    console.log(worksheet[itm].v)
+  }
+
+  if (!worksheet["!cols"])
+    worksheet["!cols"] = [];
+  if (!worksheet["!cols"][0])
+    worksheet["!cols"][0] = {
+      wch: 8
+    };
+  if (!worksheet["!cols"][1])
+    worksheet["!cols"][1] = {
+      wch: 8
+    };
+
+  worksheet['!cols'][0].wpx = 150;
+  worksheet['!cols'][1].wpx = 250;
+
+  const workbook = XLSX.utils
+    .book_new();
+  XLSX.utils.book_append_sheet(
+    workbook, worksheet
+    , "CRAWLED_DATA");
+  XLSX.writeFile(workbook, name
+    , {
+      compression: true
+    });
+}
 
 function Shopee()
 {
@@ -423,113 +530,6 @@ function Shopee()
     })
   }
 
-  async function scrollDown()
-  {
-    let prevY = window.scrollY;
-    for (let i = 0; i < 500; i++)
-    {
-      window.scrollBy(0, 90)
-      await new Promise((r) =>
-        setTimeout(r, 100))
-      if (prevY == window.scrollY)
-        break;
-      prevY = window.scrollY;
-
-      let nextButton = document
-        .querySelector(
-          'nav .shopee-button-solid--primary'
-        )?.nextSibling
-      if (!nextButton)
-        nextButton =
-        document.querySelector(
-          '.shopee-page-controller .shopee-button-solid--primary'
-        )
-        ?.nextSibling
-      if (nextButton
-        ?.getBoundingClientRect()
-        .y <
-        600) break;
-    }
-  }
-
-  function transformAndExport(contents)
-  {
-    let name = prompt('File name'
-      , "CrawledData-" +
-      new Date()
-      .toISOString()
-      .replace(/[^0-9]/g, "")
-      .slice(0
-        , 14) + ".xlsx")
-    /*
-  console.error(contents)
-  let result = ""
-  let keys = Object.keys(contents[0])
-  result += keys.map(c => `"${c}"`)
-    .join() + "\n"
-  for (let content of contents)
-  {
-    result += keys.map(c =>
-      `"${content?.[c]?.toString()?.replace(/[\n]/g,' \\n ')?.replace(/["]/g, "''")}"`
-    ).join() + "\n"
-  }
-  GM_download(
-    "data:text/plain;charset=utf-8," +
-    encodeURIComponent(
-      result)
-    , name)
-    */
-    const worksheet = XLSX.utils
-      .json_to_sheet(contents);
-
-    const colName = ['A1', 'B1', 'C1']
-    for (const itm of colName)
-    {
-      worksheet[itm].s = {
-        fill:
-        {
-          fgColor:
-          {
-            rgb: "FFFFAA00"
-          }
-          , patternType: 'solid'
-        }
-        , font:
-        {
-          color:
-          {
-            rgb: "FFFFFF"
-          }
-        }
-      }
-      console.log(worksheet[itm].v)
-    }
-
-    if (!worksheet["!cols"])
-      worksheet["!cols"] = [];
-    if (!worksheet["!cols"][0])
-      worksheet["!cols"][0] = {
-        wch: 8
-      };
-    if (!worksheet["!cols"][1])
-      worksheet["!cols"][1] = {
-        wch: 8
-      };
-
-    worksheet['!cols'][0].wpx = 150;
-    worksheet['!cols'][1].wpx = 250;
-
-    const workbook = XLSX.utils
-      .book_new();
-    XLSX.utils.book_append_sheet(
-      workbook, worksheet
-      , "CRAWLED_DATA");
-    XLSX.writeFile(workbook, name
-      , {
-        compression: true
-      });
-  }
-
   async function showProductCrawlUi()
   {
     let btn = document
@@ -574,10 +574,396 @@ function Shopee()
 
 function Kalo()
 {
-  print
+  async function startCrawl()
+  {
+    let result = []
+
+    let numPages = window.location
+      .href.includes(
+        '.com/product/detail') ? 1 :
+      parseFloat(prompt(
+        'num pages?', 2))
+
+    for (let i = 0; i < numPages; i++)
+    {
+      if (i > 0) document
+        .querySelector(
+          '.ant-pagination-item-active'
+        ).nextSibling.click();
+      result = [...result, ...
+        await startCrawlTable()
+      ]
+    }
+
+    console.log(result)
+
+    transformAndExport(result)
+  }
+
+  async function startCrawlTable()
+  {
+    await scrollDown()
+    await new Promise((r) =>
+      setTimeout(r, 3000))
+    let result = [];
+    let trows = document
+      .querySelectorAll(
+        ".ant-table-tbody .ant-table-row-level-0"
+      );
+    for (let r of trows)
+    {
+      let cells = Array.from(r
+        .querySelectorAll('td'))
+
+      let _best_selling = Array.from(r
+          .querySelectorAll('.cover'))
+        .map(x => x.style[
+          'background-image'].match(
+          /[0-9][0-9][0-9][0-9][0-9][0-9]+/
+        )[0].toString())
+
+      let rowData = {
+        _key: r.getAttribute(
+          'data-row-key')
+        , title: cells[1].innerText,
+
+        _no: cells[0].innerText,
+
+      };
+
+      for (let k of Object.keys(
+          _best_selling))
+      {
+        rowData[
+            (window.location.href
+              .includes(
+                "com/product") ?
+              "highest_revenue_video_base_id" :
+              "best_selling_product_base_id_"
+            ) +
+            k] = "8__" +
+          _best_selling[k]
+      }
+
+      if (window.location.href
+        .includes('.com/category'))
+        rowData = {
+          ...rowData
+          , category_base_id: `8__${rowData['_key']}`
+          , revenue: parseNum(cells[3]
+            .innerText)
+          , revenue_growth_rate: parseNum(
+            cells[4].innerText)
+          , num_shops: parseNum(cells[
+            6].innerText)
+          , average_shop_revenue: parseNum(
+            cells[7]?.innerText)
+          , category_level: parseNum(
+            cells[8]?.innerText)
+          , top_3_shops_ratio: parseNum(
+            cells[9]?.innerText)
+          , top_10_shops_ratio: parseNum(
+            cells[10]?.innerText)
+        }
+
+      if (window.location.href
+        .includes('.com/shop'))
+        rowData = {
+          ...rowData
+          , shop_base_id: `8__${rowData['_key']}`
+          , shop_name: rowData[
+            'title'].split('\n')[0]
+          , shop_type: rowData[
+              'title'].split('\n')[1]
+
+          , revenue: parseNum(cells[3]
+            .innerText)
+          , avg_unit_price: parseNum(
+            cells[5].innerText)
+        }
+
+      if (window.location.href
+        .includes('.com/creator'))
+        rowData = {
+          ...rowData
+          , kol_base_id: `8__${rowData['_key']}`
+          , kol_name: rowData[
+            'title'].split('\n')[1]
+          , kol_uid: rowData[
+              'title'].split('\n')[0]
+
+          , revenue: parseNum(cells[4]
+            .innerText)
+          , followers: parseNum(cells[
+              2]
+            .innerText)
+          , content_views: parseNum(
+            cells[6].innerText)
+          , debut_time: cells[8]
+            .innerText
+        }
+
+      if (window.location.href
+        .includes('.com/product') && !
+        window.location.href
+        .includes(
+          '.com/product/detail'))
+        rowData = {
+          ...rowData
+          , product_base_id: `8__${rowData['_key']}`
+          , product_name: rowData[
+              'title'].split('\n')[0]
+
+          , price: parseNum(rowData[
+              'title'].split('\n')[
+              1])
+
+          , revenue: parseNum(cells[2]
+            .innerText)
+          , sold: parseNum(cells[4]
+            .innerText)
+          , avg_unit_price: parseNum(
+            cells[5].innerText)
+          , comission_rate: parseNum(
+            cells[6].innerText)
+          , creator_number: parseNum(
+            cells[8].innerText)
+          , creator_conversion_ratio: parseNum(
+            cells[10].innerText)
+          , launch_date: cells[9]
+            .innerText
+        }
+
+      if (window.location.href
+        .includes('.com/video'))
+        rowData = {
+          ...rowData
+          , video_base_id: `8__${rowData['_key']}`
+          , video_name: rowData[
+              'title'].split('\n')[0]
+
+          , video_length: rowData[
+              'title'].split('\n')[1]
+
+          , revenue: parseNum(cells[4]
+            .innerText)
+          , sold: parseNum(cells[3]
+            .innerText)
+          , views: parseNum(
+            cells[6].innerText)
+          , gpm: parseNum(
+            cells[8].innerText)
+          , ad_cpa: parseNum(
+            cells[9].innerText)
+          , ad_view_ratio: parseNum(
+            cells[10].innerText)
+          , ad_spent: parseNum(
+            cells[11].innerText)
+          , ad_roas: parseNum(
+            cells[12].innerText)
+        }
+
+      if (window.location.href
+        .includes('.com/livestream'))
+        rowData = {
+          ...rowData
+          , live_base_id: `8__${rowData['_key']}`
+          , live_name: rowData[
+              'title'].split('\n')[0]
+
+          , live_kol_uid: rowData[
+              'title'].split('\n')[1]
+
+          , revenue: parseNum(cells[4]
+              .innerText)
+
+          , views: parseNum(
+            cells[5].innerText)
+          , gpm: parseNum(
+              cells[6].innerText)
+
+          , time_info: cells[3]
+            .innerText
+
+        }
+
+      //////////////////////////////
+      if (window.location.href
+        .includes(
+          '.com/product/detail'))
+      {
+        let tableTitle = r
+          .parentElement.parentElement
+          .parentElement.parentElement
+          .parentElement.parentElement
+          .parentElement.parentElement
+          .parentElement.parentElement
+          .parentElement.firstChild
+          .firstChild.firstChild
+          .firstChild.innerText || r
+          .parentElement.parentElement
+          .parentElement.parentElement
+          .parentElement.parentElement
+          .parentElement.parentElement
+          .parentElement.parentElement
+          .parentElement.firstChild
+          .firstChild.firstChild
+          .innerText
+        ///
+        rowData['_tableTitle'] =
+          tableTitle;
+
+        if (tableTitle == 'Creator' ||
+          tableTitle == 'Nhà sáng tạo'
+        )
+        {
+          rowData['_tableTitle'] =
+            'creator';
+          rowData['kol_uid'] = cells[
+            1].innerText.split(
+            '\n')[0]
+          rowData['followers'] =
+            parseNum(cells[1]
+              .innerText.split('\n')[
+                1])
+          rowData['revenue'] =
+            parseNum(cells[2]
+              .innerText)
+          rowData['sold'] = parseNum(
+            cells[3].innerText)
+          rowData[
+              'revenue_from_video'] =
+            parseNum(cells[4]
+              .innerText)
+          rowData[
+              'revenue_from_live'] =
+            parseNum(cells[5]
+              .innerText)
+        }
+
+        if (tableTitle == 'Live')
+        {
+          rowData['_tableTitle'] =
+            'live';
+          rowData['live_title'] =
+            cells[1].innerText
+          rowData['live_date_range'] =
+            cells[2].innerText.split(
+              '\n')[0]
+          rowData['live_duration'] =
+            cells[2].innerText.split(
+              '\n')[1].split(':')[1]
+          rowData['revenue'] =
+            parseNum(cells[3]
+              .innerText)
+          rowData['sold'] = parseNum(
+            cells[4].innerText)
+          rowData[
+              'average_unit_price'] =
+            parseNum(cells[5]
+              .innerText)
+        }
+
+        if (tableTitle.startsWith(
+            'Video'))
+        {
+          rowData['_tableTitle'] =
+            'video';
+          rowData['revenue'] =
+            parseNum(cells[2]
+              .innerText)
+          rowData['video_title'] =
+            cells[1].innerText.split(
+              '\n')[0]
+          rowData['video_duration'] =
+            cells[1].innerText.split(
+              '\n')[1]
+          rowData['views'] = parseNum(
+            cells[3].innerText)
+          rowData['sold'] = parseNum(
+            cells[4].innerText)
+
+        }
+
+        ///
+      }
+
+      result.push(rowData)
+
+    }
+    return result
+  }
+
+  function waitForTable()
+  {
+    let table = document.querySelector(
+      ".ant-table-tbody .ant-table-row-level-0"
+    )
+    if (table)
+    {
+
+      if (!document.getElementById(
+          'crawler-button'))
+      {
+        let btn = document
+          .createElement('button')
+        btn.innerText = 'CRAWL TABLE'
+        btn.id = 'crawler-button'
+        btn.style =
+          'position: fixed; left: 10px; top: 30px; border: 2px solid red; padding: 10px; font-size: 30px; background: rgba(255,100,190, 0.5); z-index: 100'
+        document.body.appendChild(btn)
+        btn.addEventListener('click'
+          , startCrawl)
+      }
+
+      try
+      {
+        document.getElementById(
+            'crawler-button').style
+          .display = 'block'
+      }
+      catch (e)
+      {}
+    }
+    else
+    {
+      try
+      {
+        document.getElementById(
+            'crawler-button').style
+          .display = 'none'
+      }
+      catch (e)
+      {}
+    }
+    setTimeout(waitForTable, 1000)
+
+  }
+
+  function parseNum(num)
+  {
+    if (!num) return '';
+    let [_, v, u] = num.replace(/,/
+      , '.').match(
+      /([0-9\.\-]+)([a-zỉ]+)?/)
+
+    v = parseFloat(v)
+
+    if (u == 'tr' || u == 'm')
+      return v * 1000000;
+    if (u == 'tỉ' || u == 'b')
+      return v * 1000000000;
+    if (u == 'k') return v * 1000;
+
+    return v;
+
+  }
+
+  setTimeout(waitForTable, 1000)
 }
 
 if (window.location.href.includes(
     "shopee.vn")) Shopee()
 
-console.log(XLSX)
+if (window.location.href.includes(
+    "kalodata.com")) Kalo()
