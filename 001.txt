@@ -1743,6 +1743,6 @@ function Kalo()
   setTimeout(waitForTable, 1000)
 }
 if (window.location.href.includes(
-    "shopee.vn")) Shopee()
+    "shopee.")) Shopee()
 if (window.location.href.includes(
     "kalodata.com")) Kalo()
